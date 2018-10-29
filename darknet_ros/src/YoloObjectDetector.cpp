@@ -18,6 +18,8 @@ std::string darknetFilePath_ = DARKNET_FILE_PATH;
 #error Path of darknet repository is not defined in CMakeLists.txt.
 #endif
 
+std_msgs::Header image_processed_header;
+std_msgs::Header buff_header[3];
 namespace darknet_ros {
 
 char *cfg;
@@ -187,7 +189,8 @@ void YoloObjectDetector::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
 
   try {
     cam_image = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
-    imageHeader_ = msg->header;
+    //imageHeader_ = msg->header;
+    //boundingBoxesResults_.header.stamp = msg->header.stamp;
   } catch (cv_bridge::Exception& e) {
     ROS_ERROR("cv_bridge exception: %s", e.what());
     return;
@@ -197,6 +200,7 @@ void YoloObjectDetector::cameraCallback(const sensor_msgs::ImageConstPtr& msg)
     {
       boost::unique_lock<boost::shared_mutex> lockImageCallback(mutexImageCallback_);
       camImageCopy_ = cam_image->image.clone();
+      imageHeader_ = msg->header;
     }
     {
       boost::unique_lock<boost::shared_mutex> lockImageStatus(mutexImageStatus_);
@@ -406,7 +410,13 @@ void *YoloObjectDetector::detectInThread()
 
 void *YoloObjectDetector::fetchInThread()
 {
-  IplImage* ROS_img = getIplImage();
+  IplImage* ROS_img;
+  {
+    boost::shared_lock<boost::shared_mutex> lock(mutexImageCallback_);
+    ROS_img = getIplImage();
+    buff_header[buffIndex_] = image_processed_header;
+  }
+  //IplImage* ROS_img = getIplImage();
   ipl_into_image(ROS_img, buff_[buffIndex_]);
   {
     boost::shared_lock<boost::shared_mutex> lock(mutexImageCallback_);
@@ -475,7 +485,7 @@ void YoloObjectDetector::setupNetwork(char *cfgfile, char *weightfile, char *dat
 
 void YoloObjectDetector::yolo()
 {
-  const auto wait_duration = std::chrono::milliseconds(2000);
+  const auto wait_duration = std::chrono::milliseconds(500);
   while (!getImageStatus()) {
     printf("Waiting for image.\n");
     if (!isNodeRunning()) {
@@ -499,9 +509,14 @@ void YoloObjectDetector::yolo()
 
   layer l = net_->layers[net_->n - 1];
   roiBoxes_ = (darknet_ros::RosBox_ *) calloc(l.w * l.h * l.n, sizeof(darknet_ros::RosBox_));
-
-  IplImage* ROS_img = getIplImage();
-  buff_[0] = ipl_to_image(ROS_img);
+  {
+    boost::shared_lock<boost::shared_mutex> lock(mutexImageCallback_);
+    IplImage* ROS_img = getIplImage();
+    buff_[0] = ipl_to_image(ROS_img);
+    buff_header[0] = image_processed_header;
+  }
+  buff_header[1] = buff_header[0];
+  buff_header[2] = buff_header[0];
   buff_[1] = copy_image(buff_[0]);
   buff_[2] = copy_image(buff_[0]);
   buffLetter_[0] = letterbox_image(buff_[0], net_->w, net_->h);
@@ -553,6 +568,7 @@ IplImage* YoloObjectDetector::getIplImage()
 {
   boost::shared_lock<boost::shared_mutex> lock(mutexImageCallback_);
   IplImage* ROS_img = new IplImage(camImageCopy_);
+  image_processed_header = imageHeader_;
   return ROS_img;
 }
 
@@ -575,6 +591,11 @@ void *YoloObjectDetector::publishInThread()
   if (!publishDetectionImage(cv::Mat(cvImage))) {
     ROS_DEBUG("Detection image has not been broadcasted.");
   }
+
+  boundingBoxesResults_.header.stamp = buff_header[(buffIndex_ + 1)%3].stamp;
+  boundingBoxesResults_.header.frame_id = "detection";
+  boundingBoxesResults_.image_header = imageHeader_;
+  boundingBoxesResults_.image_header.stamp = ros::Time::now();
 
   // Publish bounding boxes and detection result.
   int num = roiBoxes_[0].num;
@@ -612,15 +633,12 @@ void *YoloObjectDetector::publishInThread()
         }
       }
     }
-    boundingBoxesResults_.header.stamp = ros::Time::now();
-    boundingBoxesResults_.header.frame_id = "detection";
-    boundingBoxesResults_.image_header = imageHeader_;
-    boundingBoxesPublisher_.publish(boundingBoxesResults_);
   } else {
     std_msgs::Int8 msg;
     msg.data = 0;
     objectPublisher_.publish(msg);
   }
+  boundingBoxesPublisher_.publish(boundingBoxesResults_);
   if (isCheckingForObjects()) {
     ROS_DEBUG("[YoloObjectDetector] check for objects in image.");
     darknet_ros_msgs::CheckForObjectsResult objectsActionResult;
