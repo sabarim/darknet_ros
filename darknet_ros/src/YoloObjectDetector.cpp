@@ -594,7 +594,7 @@ void *YoloObjectDetector::publishInThread()
 
   boundingBoxesResults_.header.stamp = buff_header[(buffIndex_ + 1)%3].stamp;
   boundingBoxesResults_.header.frame_id = "detection";
-  boundingBoxesResults_.image_header = imageHeader_;
+  boundingBoxesResults_.image_header = buff_header[(buffIndex_ + 1)%3];
   boundingBoxesResults_.image_header.stamp = ros::Time::now();
 
   // Publish bounding boxes and detection result.
