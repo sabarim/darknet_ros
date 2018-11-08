@@ -3,6 +3,8 @@ project(darknet_ros)
 
 # Set c++11 cmake flags
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
+set(CMAKE_C_COMPILER "/usr/bin/gcc-6")
+set(CMAKE_CPP_COMPILER "/usr/bin/g++-6")
 
 # Define path of darknet folder here.
 find_path(DARKNET_PATH

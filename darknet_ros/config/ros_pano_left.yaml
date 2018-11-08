@@ -1,7 +1,7 @@
 subscribers:
 
   camera_reading:
-    topic: /hardware/depth/kinect2/sync/SyncColorImage
+    topic: /hardware/video/valeo/rectificationNIKRLeft/PanoramaImage
     queue_size: 1
 
 actions:
@@ -12,22 +12,22 @@ actions:
 publishers:
 
   object_detector:
-    topic: /darknet_ros/found_object
+    topic: /darknet_ros/found_object_left
     queue_size: 1
     latch: false
 
   bounding_boxes:
-    topic: /darknet_ros/bounding_boxes
+    topic: /darknet_ros/bounding_boxes_left
     queue_size: 1
     latch: false
 
   detection_image:
-    topic: /darknet_ros/detection_image
+    topic: /darknet_ros/detection_image_left
     queue_size: 1
     latch: false
 
 image_view:
 
-  enable_opencv: false
+  enable_opencv: true
   wait_key_delay: 1
   enable_console_output: false
