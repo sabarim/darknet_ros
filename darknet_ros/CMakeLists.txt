@@ -4,6 +4,11 @@ project(darknet_ros)
 # Set c++11 cmake flags
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 
+#avoid -lcuda** not found error
+set(CUDA_USE_STATIC_CUDA_RUNTIME OFF)
+#set(CMAKE_C_COMPILER "/usr/bin/gcc-6")
+#set(CMAKE_CXX_COMPILER "/usr/bin/g++-6")
+
 # Define path of darknet folder here.
 find_path(DARKNET_PATH
   NAMES "README.md"
@@ -21,14 +26,14 @@ if (CUDA_FOUND)
     CUDA_NVCC_FLAGS
     ${CUDA_NVCC_FLAGS};
     -O3
-    -gencode arch=compute_20,code=[sm_20,sm_21]
+    #-gencode arch=compute_20,code=[sm_20,sm_21]
     -gencode arch=compute_30,code=sm_30
     -gencode arch=compute_35,code=sm_35
     -gencode arch=compute_50,code=[sm_50,compute_50]
     -gencode arch=compute_52,code=[sm_52,compute_52]
     -gencode arch=compute_61,code=sm_61
     -gencode arch=compute_62,code=sm_62
-    --std=c++11
+    #--std=c++11
   )
   add_definitions(-DGPU)
 else()
@@ -47,7 +52,7 @@ ENDIF ( X11_FOUND )
 
 # Find rquired packeges
 find_package(Boost REQUIRED COMPONENTS thread)
-find_package(OpenCV 2 REQUIRED)
+find_package(OpenCV REQUIRED)
 include_directories(${OpenCV_INCLUDE_DIRS})
 find_package(catkin REQUIRED
   COMPONENTS
@@ -92,7 +97,7 @@ include_directories(
 if (CUDA_FOUND)
 
   link_directories(
-    /usr/local/cuda/lib64
+    /usr/local/cuda-9.0/lib64
   )
 
   cuda_add_library(${PROJECT_NAME}_lib
