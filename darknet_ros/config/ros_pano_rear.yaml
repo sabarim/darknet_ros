@@ -1,7 +1,7 @@
 subscribers:
 
   camera_reading:
-    topic: /camera/color/image_raw
+    topic: /hardware/video/valeo/rectificationNIKRRear/PanoramaImage
     queue_size: 1
 
 actions:
@@ -12,17 +12,17 @@ actions:
 publishers:
 
   object_detector:
-    topic: /darknet_ros/found_object
+    topic: /darknet_ros/found_object_rear
     queue_size: 1
     latch: false
 
   bounding_boxes:
-    topic: /darknet_ros/bounding_boxes
+    topic: /darknet_ros/bounding_boxes_rear
     queue_size: 1
     latch: false
 
   detection_image:
-    topic: /darknet_ros/detection_image
+    topic: /darknet_ros/detection_image_rear
     queue_size: 1
     latch: false
 
